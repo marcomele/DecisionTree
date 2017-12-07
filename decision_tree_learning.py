@@ -122,7 +122,7 @@ class decisionTree(object):
 	@staticmethod
 	def __classify__(test, tree, default = None):
 		if not isinstance(tree, dict):
-			return str(tree)
+			return tree
 		split_att = [keyValuePair[0] for keyValuePair in tree][0]
 		if test[split_att] not in [keyValuePair[1] for keyValuePair in tree]:
 			import sys
@@ -132,7 +132,7 @@ class decisionTree(object):
 		return decisionTree.__classify__(test, tree[(split_att, test[split_att])])
 
 	def classify_example(self, test, default = None):
-		return [(t, decisionTree.__classify__(t, tree, default)) for t in test]
+		return (test, decisionTree.__classify__(test, self.tree, default))
 
 
 if __name__ == '__main__':
@@ -142,7 +142,7 @@ if __name__ == '__main__':
 	examples = [
 		({"Alt" : "Yes", "Bar" : "No", "Fri" : "No", "Hun" : "Yes", "Pat" : "Some", "Price" : "$$$", "Rain" : "No", "Res" : "Yes", "Type" : "French", "Est" : "0-10"}, "Yes"),
 		({"Alt" : "Yes", "Bar" : "No", "Fri" : "No", "Hun" : "Yes", "Pat" : "Full", "Price" : "$", "Rain" : "No", "Res" : "No", "Type" : "Thai", "Est" : "30-60"}, "No"),
-		({"Alt" : "NO", "Bar" : "Yes", "Fri" : "No", "Hun" : "No", "Pat" : "Some", "Price" : "$", "Rain" : "No", "Res" : "No", "Type" : "Burger", "Est" : "0-10"}, "Yes"),
+		({"Alt" : "No", "Bar" : "Yes", "Fri" : "No", "Hun" : "No", "Pat" : "Some", "Price" : "$", "Rain" : "No", "Res" : "No", "Type" : "Burger", "Est" : "0-10"}, "Yes"),
 		({"Alt" : "Yes", "Bar" : "No", "Fri" : "Yes", "Hun" : "Yes", "Pat" : "Full", "Price" : "$", "Rain" : "Yes", "Res" : "No", "Type" : "Thai", "Est" : "10-30"}, "Yes"),
 		({"Alt" : "Yes", "Bar" : "No", "Fri" : "Yes", "Hun" : "No", "Pat" : "Full", "Price" : "$$$", "Rain" : "No", "Res" : "Yes", "Type" : "French", "Est" : ">60"} , "No"),
 		({"Alt" : "No", "Bar" : "Yes", "Fri" : "No", "Hun" : "Yes", "Pat" : "Some", "Price" : "$$", "Rain" : "Yes", "Res" : "Yes", "Type" : "Italian", "Est" : "0-10"}, "Yes"),
@@ -161,6 +161,17 @@ if __name__ == '__main__':
 	tree.learn()
 	print "*** TRAINED MODEL ***\n"
 	tree.show()
-	#print "\n\n*** PRUNED TREE ***\n"
-	#tree.prune(maxPchange = 0.05)
-	#tree.show()
+
+	print "\n\n*** CLASSIFICATION TEST ***"
+	test = {"Alt" : "No", "Bar" : "No", "Fri" : "No", "Hun" : "No", "Pat" : "Full", "Price" : "$$$", "Rain" : "No", "Res" : "No", "Type" : "Burger", "Est" : "10-30"}
+	result = tree.classify_example(test)
+	print "[" + result[1] + "]"
+
+	print "\n\n*** PRUNED TREE ***\n"
+	tree.prune(maxPchange = 0.05)
+	tree.show()
+
+	print "\n\n*** CLASSIFICATION TEST ***"
+	test = {"Alt" : "No", "Bar" : "No", "Fri" : "No", "Hun" : "No", "Pat" : "Full", "Price" : "$$$", "Rain" : "No", "Res" : "No", "Type" : "Burger", "Est" : "10-30"}
+	result = tree.classify_example(test)
+	print "[" + result[1] + "]"
