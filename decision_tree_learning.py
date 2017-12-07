@@ -66,25 +66,27 @@ class decisionTree(object):
 			return 0
 		c_k = len(filter(lambda labeledExa: labeledExa[0][keyValuePair[0]] == keyValuePair[1] and labeledExa[1] == label, exa))
 		c_k_hat = float(c) * float(len(filter(lambda labeledExa: labeledExa[0][keyValuePair[0]] == keyValuePair[1], exa))) / float(len(exa))
-		return ((c_k - c_k_hat) ** 2.0) / c_k_hat
+		return float((c_k - c_k_hat) ** 2.0) / c_k_hat
 
 	@staticmethod
 	def __prune__(tree, examples, p_func, maxPchange):
 		if not isinstance(tree, dict):
-			return False
+			return tree
 		# if there are further levels (splits)
 		# go deep further into the tree first
 		for keyValuePair in tree:
 			if isinstance(tree[keyValuePair], dict):
-				decisionTree.__prune__(tree[keyValuePair], filter(lambda labeledExa: labeledExa[0][keyValuePair[0]] == keyValuePair[1], examples), p_func, maxPchange)
+				tree[keyValuePair] = decisionTree.__prune__(tree[keyValuePair], filter(lambda labeledExa: labeledExa[0][keyValuePair[0]] == keyValuePair[1], examples), p_func, maxPchange)
 		# if all this subtree's childs are leaves
 		# (after potential pruning in deeper levels)
 		# apply pruning on this attribute
 		if not reduce(lambda x, y: x or y, [isinstance(tree[keyValuePair], dict) for keyValuePair in tree], False):
-			delta = sum((sum(decisionTree.dev(tree, examples, keyValuePair, label) for label in tree[keyValuePair])) for keyValuePair in tree)
+			labels = set(tree[keyValuePair] for keyValuePair in tree)
+			delta = sum(sum([decisionTree.dev(tree, examples, keyValuePair, label) for label in labels]) for keyValuePair in tree)
 			df = len([keyValuePair for keyValuePair in tree]) - 1
 			if p_func(delta, df) > maxPchange:
-				tree = decisionTree.plurality_value(examples)
+				return decisionTree.plurality_value(examples)[0]
+		return tree
 
 	def prune(self, maxPchange = 0.05):
 		if not self.tree:
@@ -92,27 +94,46 @@ class decisionTree(object):
 			sys.stderr.write("[ERROR] pruning attempt on empty tree\n")
 			return
 		import math
-		chisq_fun = lambda x, df: round(1.0 / (2.0 * gamma(df / 2.0)) * (x / 2.0) ** (df / 2.0 - 1) * exp(-x / 2.0), 3)
+		chisq_fun = lambda x, df: 1.0 / (2.0 * gamma(df / 2.0)) * (x / 2.0) ** (df / 2.0 - 1) * exp(-x / 2.0)
 		try:
 			from scipy.stats import chi2
-			chisq_fun = lambda x, df: round(1 - chi2.cdf(x, df), 3)
+			chisq_fun = lambda x, df: 1 - chi2.cdf(x, df)
 		except ImportError:
 			import sys
 			sys.stderr.write("[WARNING] ImportError: no module named scipy\n")
 			sys.stderr.write("          falling back to math module to perform chi-squared pruning\n")
-		decisionTree.__prune__(self.tree, self.exa, chisq_fun, maxPchange)
+		self.tree = decisionTree.__prune__(self.tree, self.exa, chisq_fun, maxPchange)
 
 	@staticmethod
 	def printKey(tree, depth = 0):
+		if not isinstance(tree, dict):
+			print "--> " + str(tree)
+			return
 		for ruleHead in tree:
 			print ("\t" * depth) + ("and" if depth else "if") + str(ruleHead)
 			if not isinstance(tree[ruleHead], dict):
-				print ("\t" * (depth + 1)) + "--> then " + str(tree[ruleHead])
+				print ("\t" * (depth + 1)) + "--> then [" + str(tree[ruleHead]) + "]"
 			else:
 				decisionTree.printKey(tree[ruleHead], depth + 1)
 
 	def show(self):
 		decisionTree.printKey(self.tree)
+
+	@staticmethod
+	def __classify__(test, tree, default = None):
+		if not isinstance(tree, dict):
+			return str(tree)
+		split_att = [keyValuePair[0] for keyValuePair in tree][0]
+		if test[split_att] not in [keyValuePair[1] for keyValuePair in tree]:
+			import sys
+			sys.stderr.write("[ERROR] Test istance has missing values on needed attribute\n")
+			sys.stderr.write("        classified with default label (" + str(default) + ")\n")
+			return None
+		return decisionTree.__classify__(test, tree[(split_att, test[split_att])])
+
+	def classify_example(self, test, default = None):
+		return [(t, decisionTree.__classify__(t, tree, default)) for t in test]
+
 
 if __name__ == '__main__':
 	# examples for tree learning must be an array or list of tuples (exa, lab)
@@ -138,7 +159,8 @@ if __name__ == '__main__':
 	# define object decisionTree
 	tree = decisionTree(examples, attributes)
 	tree.learn()
+	print "*** TRAINED MODEL ***\n"
 	tree.show()
-	print "\n" * 5
-	tree.prune(maxPchange = 0.05)
-	tree.show()
+	#print "\n\n*** PRUNED TREE ***\n"
+	#tree.prune(maxPchange = 0.05)
+	#tree.show()
