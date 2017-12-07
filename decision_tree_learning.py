@@ -135,21 +135,21 @@ class decisionTree(object):
 
 	def prune(self, maxPchange = 0.05):
 		"""
-			The wrap method to initiate the pruning algorithm on a fully-grown tree. Pruning is chi-squared pruning, and maxPchange is the threshold at which to reject the null hypothesis and leaving a split as is. Makes use of the python scipy.stat module providing the chi2.cdf() function; falls back to classical analytic computation when module scipy is not available.
+			The wrap method to initiate the pruning algorithm on a fully-grown tree. Pruning is chi-squared pruning, and maxPchange is the threshold at which to reject the null hypothesis and leaving a split as is. Makes use of the python scipy.stat module providing the chi2.cdf() function.
 		"""
 		if not self.tree:
 			import sys
 			sys.stderr.write("[ERROR] pruning attempt on empty tree\n")
 			return
 		import math
-		chisq_fun = lambda x, df: 1.0 / (2.0 * gamma(df / 2.0)) * (x / 2.0) ** (df / 2.0 - 1) * exp(-x / 2.0)
 		try:
 			from scipy.stats import chi2
-			chisq_fun = lambda x, df: 1 - chi2.cdf(x, df)
 		except ImportError:
 			import sys
-			sys.stderr.write("[WARNING] ImportError: no module named scipy\n")
-			sys.stderr.write("          falling back to math module to perform chi-squared pruning\n")
+			sys.stderr.write("[ERROR] ImportError: no module named scipy\n")
+			sys.stderr.write("        aborting pruning\n")
+			return
+		chisq_fun = lambda x, df: 1 - chi2.cdf(x, df)
 		self.tree = decisionTree.__prune__(self.tree, self.exa, chisq_fun, maxPchange)
 
 	@staticmethod
