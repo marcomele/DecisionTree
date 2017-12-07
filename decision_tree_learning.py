@@ -22,7 +22,7 @@ class decisionTree(object):
 		from math import log
 		labels = [lab for (e, lab) in exa]
 		count = len(labels)
-		node_PS = [labels.count(l) / count for l in set(labels)]
+		node_PS = [labels.count(l) / float(count) for l in set(labels)]
 		return -sum([(x * log(x, 2) if x else x) for x in node_PS])
 
 	@staticmethod
@@ -38,10 +38,10 @@ class decisionTree(object):
 		if not examples:
 			return plurality_value(parent_examples)
 		if len(set(lab for (exa, lab) in examples)) == 1:
-			return set(lab for (exa, lab) in examples)
+			return examples[0][1]
 		if not attributes:
 			return plurality_value(examples)
-		split_att = max(attributes, key = lambda att: decisionTree.info_gain(att, examples))
+		split_att = max(sorted(attributes), key = lambda att: decisionTree.info_gain(att, examples))
 		tree = {}
 		for value in decisionTree.values(examples, split_att):
 			exa = [labeledExa for labeledExa in examples if labeledExa[0][split_att] == value]
@@ -57,11 +57,13 @@ class decisionTree(object):
 		# filter data with missing values
 		nomissisng = filter(lambda labeledExa: None not in [labeledExa[0][att] for att in self.att], self.exa)
 		# filter data with missing label
-		self.tree = self.decision_tree_learning(filter(lambda labeledExa: labeledExa[1] is not None, nomissisng), self.att)
+		self.tree = self.decision_tree_learning(filter(lambda labeledExa: labeledExa[1] is not None and not isinstance(labeledExa[1], dict), nomissisng), self.att)
 
 	@staticmethod
 	def dev(tree, exa, keyValuePair, label):
 		c = len(filter(lambda labeledExa: labeledExa[1] == label, exa))
+		if not c:
+			return 0
 		c_k = len(filter(lambda labeledExa: labeledExa[0][keyValuePair[0]] == keyValuePair[1] and labeledExa[1] == label, exa))
 		c_k_hat = float(c) * float(len(filter(lambda labeledExa: labeledExa[0][keyValuePair[0]] == keyValuePair[1], exa))) / float(len(exa))
 		return ((c_k - c_k_hat) ** 2.0) / c_k_hat
@@ -78,12 +80,11 @@ class decisionTree(object):
 		# if all this subtree's childs are leaves
 		# (after potential pruning in deeper levels)
 		# apply pruning on this attribute
-		if reduce(lambda x, y: x and y, [isinstance(tree[keyValuePair], dict) for keyValuePair in tree], True):
-			delta = sum((sum(decisionTree.dev(tree, examples, keyValuePair, labeledExa[1]) for labeledExa in tree[keyValuePair])) for keyValuePair in tree)
+		if not reduce(lambda x, y: x or y, [isinstance(tree[keyValuePair], dict) for keyValuePair in tree], False):
+			delta = sum((sum(decisionTree.dev(tree, examples, keyValuePair, label) for label in tree[keyValuePair])) for keyValuePair in tree)
 			df = len([keyValuePair for keyValuePair in tree]) - 1
 			if p_func(delta, df) > maxPchange:
 				tree = decisionTree.plurality_value(examples)
-
 
 	def prune(self, maxPchange = 0.05):
 		if not self.tree:
@@ -105,11 +106,10 @@ class decisionTree(object):
 	def printKey(tree, depth = 0):
 		for ruleHead in tree:
 			print ("\t" * depth) + ("and" if depth else "if") + str(ruleHead)
-			for seq in tree[ruleHead]:
-				if not isinstance(seq, tuple):
-					print ("\t" * (depth + 1)) + "then " + str(seq)
-				else:
-					decisionTree.printKey(tree[ruleHead], depth + 1)
+			if not isinstance(tree[ruleHead], dict):
+				print ("\t" * (depth + 1)) + "--> then " + str(tree[ruleHead])
+			else:
+				decisionTree.printKey(tree[ruleHead], depth + 1)
 
 	def show(self):
 		decisionTree.printKey(self.tree)
@@ -140,5 +140,5 @@ if __name__ == '__main__':
 	tree.learn()
 	tree.show()
 	print "\n" * 5
-	tree.prune()
+	tree.prune(maxPchange = 0.05)
 	tree.show()
