@@ -221,7 +221,7 @@ if __name__ == '__main__':
 
 	print "\n\n*** CLASSIFICATION TEST ***"
 	test = {"Alt" : "No", "Bar" : "No", "Fri" : "No", "Hun" : "No", "Pat" : "Full", "Price" : "$$$", "Rain" : "No", "Res" : "No", "Type" : "Burger", "Est" : "10-30"}
-	result = tree.classify_example(test)
+	result = tree.classify(test)
 	print "[" + result[1] + "]"
 
 	print "\n\n*** PRUNED TREE ***\n"
